@@ -12,7 +12,7 @@
 #   notice, this list of conditions and the following disclaimer in the 
 #   documentation and/or other materials provided with the distribution.
 #
-# THIS SOFTWARE IS PROVIDED BY <COPYRIGHT HOLDER> ``AS IS'' AND ANY EXPRESS OR
+# THIS SOFTWARE IS PROVIDED BY Daniel Oelschlegel ``AS IS'' AND ANY EXPRESS OR
 # IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
 # OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN
 # NO EVENT SHALL Daniel Oelschlegel OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
@@ -47,12 +47,13 @@ __author__ = "Daniel Oelschlegel"
 __copyright__ = "Copyright 2011, " + __author__
 __credits__ = [""]
 __license__ = "BSD"
-__version__ = "0.3"
+__version__ = "0.31"
 
+# Kangle, a symbiosis of manga and kindle
 class Kangle(object):
     """Kangle makes manga scans readable on a kindle device."""
-    # reverse order splitted image, usefull for manga reading style
-    # comics often should use reverse = False instead of manga
+    # reverse order by splitted image, usefull for reading manga
+    # comics should use reverse = False
     reverse = True
     # splitting if the image is too wide
     splitting = True
@@ -90,6 +91,7 @@ class Kangle(object):
             fullName = os.path.join(self._target_dir, filename)
             # reverse : manga reading style, right to left, save in correct order
             if not reverse:
+                # HINT: the first half resizes twice
                 first, second = second, first.resize(self.resolution)
             if not palleteMode:
                 second.save(fullName, "JPEG")
