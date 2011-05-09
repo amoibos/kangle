@@ -33,6 +33,8 @@
 # directories
 # press [ALT] + [z] for rereading the entries in pictures on a kindle
 
+# kindle tip: [ALT] [f] = fullscreen, 2x [ALT] [p] clear the boundary
+
 import sys
 import os
 try:
@@ -43,21 +45,26 @@ except ImportError:
 
 __author__ = "Daniel Oelschlegel"
 __copyright__ = "Copyright 2011, " + __author__
-#__credits__ = ["", ""]
+__credits__ = [""]
 __license__ = "BSD"
-__version__ = "0.2"
+__version__ = "0.3"
 
 class Kangle(object):
     """Kangle makes manga scans readable on a kindle device."""
+    # reverse order splitted image, usefull for manga reading style
+    # comics often should use reverse = False instead of manga
+    reverse = True
+    # splitting if the image is too wide
+    splitting = True
     # needed for recursive search
-    __counter = 0
+    _counter = 0
     # resolution of your kindle, required for stretching
     resolution = (600, 800)
     # target_dir is the kindle root directory, dummy value
-    __target_dir = 'D:\\'
+    _target_dir = 'D:\\'
 
     def resetCounter(self):
-        self.__counter = 0
+        self._counter = 0
 
     def run(self, dir):
         self.resetCounter()
@@ -69,26 +76,28 @@ class Kangle(object):
     def adjustImage(self, filename, counter):
         """Adjust the image file filename to kindle screen and use counter for naming."""
         first = Image.open(filename)
-        # prevents IOError with this type, convert is often unneeded and slow
+        # prevents IOError with this type, convert is often unnecessary and slow
         palleteMode = first.mode == 'P'
         # resolution of the image
         (width, height) = first.size
-        filename = '%06da.jpg' % self.__counter
+        filename = '%06da.jpg' % self._counter
         # too wide, better splitting in middle and stretching
-        if width > height:
+        if splitting and width > height:
             # take the second half and resize
             second = first.crop((width / 2, 0, width, height))
             second = second.resize(self.resolution)
             first = first.crop((0, 0, width / 2, height))
-            fullName = os.path.join(self.__target_dir, filename)
-            # manga reading style, right to left, save in correct order
+            fullName = os.path.join(self._target_dir, filename)
+            # reverse : manga reading style, right to left, save in correct order
+            if not reverse:
+                first, second = second, first.resize(self.resolution)
             if not palleteMode:
                 second.save(fullName, "JPEG")
             else:
                 second.convert("RGB").save(fullName, "JPEG")
             filename = filename.replace('a.jpg', 'b.jpg')
         first = first.resize(self.resolution)
-        fullName = os.path.join(self.__target_dir, filename)
+        fullName = os.path.join(self._target_dir, filename)
         if not palleteMode:
             first.save(fullName, "JPEG")
         else:
@@ -111,20 +120,19 @@ class Kangle(object):
             # filter for file extensions, 
             # this must be supported by PIL
             if filename[-4:].lower() in ['.jpg', '.png', '.gif']:
-                self.adjustImage(filename, self.__counter)
-                self.__counter += 1
-        
+                self.adjustImage(filename, self._counter)
+                self._counter += 1
         # continue with subdirectories
         for dir in dirs:
             self.looking(dir)
 
     def __init__(self, title, target_dir):
-        self.__target_dir = target_dir
+        self._target_dir = target_dir
         for dir in ["pictures", title]:
-            self.__target_dir = os.path.join(self.__target_dir, dir)
-            if not os.path.isdir(self.__target_dir):
-                print "creating directory " , self.__target_dir
-                os.mkdir(self.__target_dir)
+            self._target_dir = os.path.join(self._target_dir, dir)
+            if not os.path.isdir(self._target_dir):
+                print "creating directory " , self._target_dir
+                os.mkdir(self._target_dir)
             elif dir == sys.argv[1]:
                 print "directory ", dir, " already exists"
 
@@ -133,9 +141,9 @@ if __name__ == "__main__":
         # sys.argv[2] could look like "D:\"(windows) or "/media/kindle"(unix)
         title, target_dir = sys.argv[1], sys.argv[2]
     except IndexError:
-        if len(sys.argv) < 3 and sys.argv[1] == "--version":
+        if len(sys.argv) > 1 and sys.argv[1] == "--version":
             print "Kangle version ", __version__," by ", __author__
-            #TODO: credit line
+            print "Thanks to", __credits__
             sys.exit(0) 
         else:
             print "arguments: <TITLE> <KINDLE_ROOT_DIRECTORY>"
