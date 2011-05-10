@@ -3,29 +3,31 @@
 # Copyright 2011 Daniel Oelschlegel. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without 
-# modification, are permitted provided that the following conditions are met:
+# modification, are permitted provided that the following conditions 
+# are met:
 #
-#   1. Redistributions of source code must retain the above copyright notice,
-#   this list of conditions and the following disclaimer.
+#   1. Redistributions of source code must retain the above copyright 
+#   notice, this list of conditions and the following disclaimer.
 #
 #   2. Redistributions in binary form must reproduce the above copyright 
 #   notice, this list of conditions and the following disclaimer in the 
 #   documentation and/or other materials provided with the distribution.
 #
-# THIS SOFTWARE IS PROVIDED BY Daniel Oelschlegel ``AS IS'' AND ANY EXPRESS OR
-# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-# OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN
-# NO EVENT SHALL Daniel Oelschlegel OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
-# INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
-# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF 
-# THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# THIS SOFTWARE IS PROVIDED BY Daniel Oelschlegel ``AS IS'' AND ANY 
+# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Daniel Oelschlegel OR 
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR 
+# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY 
+# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-# The views and conclusions contained in the software and documentation are
-# those of the authors and should not be interpreted as representing official
-# policies, either expressed or implied, of Daniel Oelschlegel.
+# The views and conclusions contained in the software and documentation
+# are those of the authors and should not be interpreted as representing
+# official policies, either expressed or implied, of Daniel Oelschlegel.
 
 
 # this program requires a plugged kindle, at least python 2.* and PIL
@@ -35,7 +37,7 @@
 
 # kindle tip: [ALT] + [f] = fullscreen, 2x [ALT] + [p] clear the boundary
 
-from sys import exit, argv
+from sys import exit, argv, stderr
 from os import walk, mkdir, getcwd
 from os.path import join, isdir
 
@@ -49,16 +51,14 @@ __author__ = "Daniel Oelschlegel"
 __copyright__ = "Copyright 2011, " + __author__
 __credits__ = [""]
 __license__ = "BSD"
-__version__ = "0.5"
+__version__ = "0.5.1"
 
 # Kangle, a symbiosis of manga and kindle
 class Kangle(object):
     """Kangle makes manga scans readable on a kindle device."""
     
     def run(self, dir):
-        print "converting & transferring ...",
         self.looking(dir)
-        print "finished"
 
     # kindle reads the files in order of timestamp
     def adjustImage(self, filename, counter):
@@ -127,8 +127,8 @@ class Kangle(object):
         # stretching
         self.stretching = True
         # footnote displays the name of the image file
-        self.footer = True#False
-        # needed for recursive search
+        self.footer = True
+        # for resuming a session
         self._counter = counter
         # resolution of your kindle, required for stretching
         self.resolution = (600, 800)
@@ -137,10 +137,9 @@ class Kangle(object):
         for dir in ["pictures", title]:
             self._target_dir = join(self._target_dir, dir)
             if not isdir(self._target_dir):
-                print "creating directory " , self._target_dir
                 mkdir(self._target_dir)
             elif dir == argv[1]:
-                print "directory ", dir, " already exists"
+                print >> stderr, "directory" + dir +"already exists"
 
 if __name__ == "__main__":
     try:
@@ -152,9 +151,9 @@ if __name__ == "__main__":
             print "Thanks to", __credits__
             exit(0) 
         else:
-            print "arguments: <TITLE> <KINDLE_ROOT_DIRECTORY>"
+            print >> stderr, "arguments: <TITLE> <KINDLE_ROOT_DIRECTORY>"
             exit(-1)
-   
     kangle = Kangle(title, target_dir)    
+    print "converting & transferring ...",
     kangle.run(getcwd())
-    
+    print "finished"
