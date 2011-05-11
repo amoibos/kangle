@@ -51,7 +51,7 @@ __author__ = "Daniel Oelschlegel"
 __copyright__ = "Copyright 2011, " + __author__
 __credits__ = [""]
 __license__ = "BSD"
-__version__ = "0.5.1"
+__version__ = "0.5.2"
 
 # Kangle, a symbiosis of manga and kindle
 class Kangle(object):
@@ -61,13 +61,13 @@ class Kangle(object):
         self.looking(dir)
 
     # kindle reads the files in order of timestamp
-    def adjustImage(self, filename, counter):
+    def adjustImage(self, filename, counter, extension):
         """Adjust the image file filename to kindle screen and use counter
         for naming."""
         first = Image.open(filename)
         # resolution of the image
         (width, height) = first.size
-        filename = '%06da.jpg' % counter
+        filename = '%06da%s' % (counter, extension)
         # too wide, better splitting in middle
         if self.splitting and width > height:
             # take the second half and resize
@@ -78,7 +78,7 @@ class Kangle(object):
             if not self.reverse:
                 first, second = second, first
             self.save(second, filename)
-            filename = filename.replace('a.jpg', 'b.jpg')
+            filename = filename.replace('a', 'b')
         self.save(first, filename)
         
     def save(self, image, filename):
@@ -88,20 +88,20 @@ class Kangle(object):
         if self.footer:
             self.makeFootnote(image, '%s@%s' % (filename, self.title))
         fullName = join(self._target_dir, filename)
-        # prevents IOError with this type,convert is often unnecessary and slow
-        if not image.mode in ['P']:
-            image.save(fullName, "JPEG")
-        else:
-            image.convert("RGB").save(fullName, "JPEG")
-    
+        image.save(fullName)
+            
     def makeFootnote(self, image, text):
-        """Write the filename@Title downright."""
+        """Write the text downright."""
         draw = ImageDraw.Draw(image)
-        dim = draw.textsize(text)
-        x1, y1 = image.size[0] - dim[0], image.size[1] - dim[1]
-        draw.rectangle((x1,y1, image.size[0], image.size[1]), fill='white')
-        draw.text((x1, y1), text, fill='black')
-
+        width, height = draw.textsize(text)
+        x, y = image.size[0] - width, image.size[1] - height
+        try:
+            back = image.info['transparency']
+        except KeyError:
+            back = "white"
+        draw.rectangle((x, y, image.size[0], image.size[1]), fill=back)
+        draw.text((x, y), text, fill=0)
+        
     # optimized recursive search
     def looking(self, dir):
         """Find supported pictures in dir."""
@@ -112,9 +112,10 @@ class Kangle(object):
             for filename in files:
                 # filter for file extensions, 
                 # this must be supported by PIL
-                if filename[-4:].lower() in ['.jpg', '.png', '.gif']:
+                extension = filename[-4:].lower()
+                if extension in ['.jpg', '.png', '.gif', '.bmp']:
                     fullName = join(curr_dir, filename)
-                    self.adjustImage(fullName, counter)
+                    self.adjustImage(fullName, counter, extension)
                     counter += 1  
         self._counter = counter
         
@@ -139,7 +140,7 @@ class Kangle(object):
             if not isdir(self._target_dir):
                 mkdir(self._target_dir)
             elif dir == argv[1]:
-                print >> stderr, "directory" + dir +"already exists"
+                print >> stderr, "directory ", dir, " already exists"
 
 if __name__ == "__main__":
     try:
