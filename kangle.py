@@ -61,13 +61,13 @@ class Kangle(object):
         self.looking(dir)
 
     # kindle reads the files in order of timestamp
-    def adjustImage(self, filename, counter, extension):
+    def adjustImage(self, filename, counter):
         """Adjust the image file filename to kindle screen and use counter
         for naming."""
         first = Image.open(filename)
         # resolution of the image
         (width, height) = first.size
-        filename = '%06da%s' % (counter, extension)
+        filename = '%06da%s' % (counter, filename[-4:])
         # too wide, better splitting in middle
         if self.splitting and width > height:
             # take the second half and resize
@@ -112,10 +112,9 @@ class Kangle(object):
             for filename in files:
                 # filter for file extensions, 
                 # this must be supported by PIL
-                extension = filename[-4:].lower()
-                if extension in ['.jpg', '.png', '.gif', '.bmp']:
+                if filename[-4:].lower() in ['.jpg', '.png', '.gif', '.bmp']:
                     fullName = join(curr_dir, filename)
-                    self.adjustImage(fullName, counter, extension)
+                    self.adjustImage(fullName, counter)
                     counter += 1  
         self._counter = counter
         
