@@ -1,34 +1,7 @@
 #! /usr/bin/env python
 
-# Copyright 2011 Daniel Oelschlegel. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without 
-# modification, are permitted provided that the following conditions 
-# are met:
-#
-#   1. Redistributions of source code must retain the above copyright 
-#   notice, this list of conditions and the following disclaimer.
-#
-#   2. Redistributions in binary form must reproduce the above copyright 
-#   notice, this list of conditions and the following disclaimer in the 
-#   documentation and/or other materials provided with the distribution.
-#
-# THIS SOFTWARE IS PROVIDED BY Daniel Oelschlegel ``AS IS'' AND ANY 
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Daniel Oelschlegel OR 
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR 
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY 
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
-# The views and conclusions contained in the software and documentation
-# are those of the authors and should not be interpreted as representing
-# official policies, either expressed or implied, of Daniel Oelschlegel.
-
+# Copyright 2011, Daniel Oelschlegel <amoibos@gmail.com>
+# License: 2-clause BSD
 
 # this program requires a plugged kindle, at least python 2.* and PIL
 # start this program in a subdirectory that contains picture files or 
@@ -51,14 +24,15 @@ __author__ = "Daniel Oelschlegel"
 __copyright__ = "Copyright 2011, " + __author__
 __credits__ = [""]
 __license__ = "BSD"
-__version__ = "0.5.2"
+__version__ = "0.5.3"
 
 # Kangle, a symbiosis of manga and kindle
 class Kangle(object):
     """Kangle makes manga scans readable on a kindle device."""
+    supportedFormats = ['.jpg', '.png', '.gif', '.bmp']
     
-    def run(self, dir):
-        self.looking(dir)
+    def run(self):
+        self._looking()
 
     # kindle reads the files in order of timestamp
     def adjustImage(self, filename, counter):
@@ -67,7 +41,7 @@ class Kangle(object):
         first = Image.open(filename)
         # resolution of the image
         (width, height) = first.size
-        filename = '%06da%s' % (counter, filename[-4:])
+        filename = '%05da%s' % (counter, filename[-4:])
         # too wide, better splitting in middle
         if self.splitting and width > height:
             # take the second half and resize
@@ -77,48 +51,60 @@ class Kangle(object):
             # save in correct order
             if not self.reverse:
                 first, second = second, first
-            self.save(second, filename)
-            filename = filename.replace('a', 'b')
-        self.save(first, filename)
+            self._save(second, filename)
+            filename = filename.replace("a", "b")
+        self._save(first, filename)
         
-    def save(self, image, filename):
+    def _save(self, image, filename):
         """Save the image with the enabled options under the filename."""
         if self.stretching:
             image = image.resize(self.resolution)
         if self.footer:
-            self.makeFootnote(image, '%s@%s' % (filename, self.title))
+            self._makeFootnote(image, "%s/%05da@%s" % (filename, self._amount,self.title))
         fullName = join(self._target_dir, filename)
         image.save(fullName)
             
-    def makeFootnote(self, image, text):
+    def _makeFootnote(self, image, text):
         """Write the text downright."""
         draw = ImageDraw.Draw(image)
         width, height = draw.textsize(text)
         x, y = image.size[0] - width, image.size[1] - height
+        fore, back = 0, "white"
         try:
-            back = image.info['transparency']
+            back = image.info["transparency"]
         except KeyError:
-            back = "white"
+            if image.mode == "P":
+                palette = sorted(image.getcolors(), key=lambda color: color[0])
+                fore, back = palette[-2][1], palette[-1][1]
         draw.rectangle((x, y, image.size[0], image.size[1]), fill=back)
-        draw.text((x, y), text, fill=0)
+        draw.text((x, y), text, fill=fore)
         
     # optimized recursive search
-    def looking(self, dir):
+    def _looking(self):
         """Find supported pictures in dir."""
-        counter = self._counter
-        for curr_dir, dirs, files in walk(dir):
+        for curr_dir, dirs, files in walk(self._dir):
             dirs.sort()
             files.sort()
             for filename in files:
                 # filter for file extensions, 
                 # this must be supported by PIL
-                if filename[-4:].lower() in ['.jpg', '.png', '.gif', '.bmp']:
+                if filename[-4:].lower() in Kangle.supportedFormats:
                     fullName = join(curr_dir, filename)
-                    self.adjustImage(fullName, counter)
-                    counter += 1  
-        self._counter = counter
-        
-    def __init__(self, title, target_dir, counter=0):
+                    self.adjustImage(fullName, self._counter)
+                    self._counter += 1  
+    
+    def _amountFiles(self):
+        """Count amount of supported Files in dir and subdirectories."""
+        amount = 0
+        for _, _, files in walk(self._dir):
+            for filename in files:
+                # filter for file extensions, 
+                # this must be supported by PIL
+                if filename[-4:].lower() in Kangle.supportedFormats:
+                    amount += 1
+        return amount
+    
+    def __init__(self, title, target_dir, source, counter=0):
         # reverse order by splitted image, usefull for reading manga
         # comics should use reverse = False
         self.reverse = True
@@ -134,6 +120,10 @@ class Kangle(object):
         self.resolution = (600, 800)
         self.title = title
         self._target_dir = target_dir
+        self._dir = source
+        # count number of supported Files
+        if self.footer:
+            self._amount = self._amountFiles()
         for dir in ["pictures", title]:
             self._target_dir = join(self._target_dir, dir)
             if not isdir(self._target_dir):
@@ -146,14 +136,15 @@ if __name__ == "__main__":
         # sys.argv[2] could look like "D:\"(windows) or "/media/kindle"(unix)
         title, target_dir = argv[1], argv[2]
     except IndexError:
-        if len(sys.argv) > 1 and sys.argv[1] == "--version":
+        if len(argv) > 1 and argv[1] == "--version":
             print "Kangle version ", __version__," by ", __author__
             print "Thanks to", __credits__
             exit(0) 
         else:
             print >> stderr, "arguments: <TITLE> <KINDLE_ROOT_DIRECTORY>"
             exit(-1)
-    kangle = Kangle(title, target_dir)    
+    kangle = Kangle(title, target_dir, getcwd())    
+    print "found", kangle._amount, "files"
     print "converting & transferring ...",
-    kangle.run(getcwd())
+    kangle.run()
     print "finished"
