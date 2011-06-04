@@ -24,7 +24,7 @@ __author__ = "Daniel Oelschlegel"
 __copyright__ = "Copyright 2011, " + __author__
 __credits__ = [""]
 __license__ = "BSD"
-__version__ = "0.5.3"
+__version__ = "0.5.4"
 
 # Kangle, a symbiosis of manga and kindle
 class Kangle(object):
@@ -60,7 +60,8 @@ class Kangle(object):
         if self.stretching:
             image = image.resize(self.resolution)
         if self.footer:
-            self._makeFootnote(image, "%s/%05da@%s" % (filename, self._amount,self.title))
+            text = "%s/%05d@%s" % (filename[:-4], self._amount, self.title)
+            self._makeFootnote(image, text)
         fullName = join(self._target_dir, filename)
         image.save(fullName)
             
@@ -74,7 +75,7 @@ class Kangle(object):
             back = image.info["transparency"]
         except KeyError:
             if image.mode == "P":
-                palette = sorted(image.getcolors(), key=lambda color: color[0])
+                palette = sorted(image.getcolors(), key=lambda color:color[0])
                 fore, back = palette[-2][1], palette[-1][1]
         draw.rectangle((x, y, image.size[0], image.size[1]), fill=back)
         draw.text((x, y), text, fill=fore)
