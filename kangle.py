@@ -129,7 +129,7 @@ class Kangle(object):
             self._target_dir = join(self._target_dir, dir)
             if not isdir(self._target_dir):
                 mkdir(self._target_dir)
-            elif dir == argv[1]:
+            elif dir != "pictures":
                 print >> stderr, "directory ", dir, " already exists"
 
 if __name__ == "__main__":

@@ -5,21 +5,24 @@
 
 from Tkinter import *
 import tkFileDialog
+import thread
+from threading import Timer
 from kangle import Kangle
 
-# TODO: advanced mode, threading for status bar, bugs(from console)
+# TODO: advanced mode
+
 __author__ = "Daniel Oelschlegel"
 __copyright__ = "Copyright 2011, " + __author__
 __credits__ = [""]
 __license__ = "BSD"
-__version__ = "0.1"
+__version__ = "0.2"
 
 class Kangle_GUI():
     
     def __init__(self):
         self.window = Tk(className="Kangle GUI")
+        self.window.resizable(False, False)
         self.window.ml = Menu(self.window)
-        self.window.ml.m = Menu(self.window.ml, tearoff=0)
         self.window.ml.add_command(label="Simple mode", command=self.menu)
         self.window.config(menu=self.window.ml)
         
@@ -48,23 +51,48 @@ class Kangle_GUI():
         self.button2 = Button(master=self.window, text="...", command=self.source)
         self.button2.grid(row=2, column=2, padx=10)
         
-        self.button2 = Button(master=self.window, text="Start", command=self.run, 
-            padx=50)
+        self.starter = StringVar()
+        self.button2 = Button(master=self.window, text="Start", command=self.starttimer, 
+            padx=50, textvariable=self.starter)
+        self.starter.set("Start")
         self.button2.grid(row=3, column=1)
-        self.advanced = False
-        self.window.mainloop()
         
-    def run(self):
-        self.button2.config(state=DISABLED)
+        self.advanced = False
+        self.ready = False
+        self.label4 = Label(master=self.window, text='', relief=SUNKEN, width=50)
+        self.label4.grid(sticky="w", columnspan=3, pady=5)
+        self.window.mainloop()
+     
+    def starttimer(self):
+        if not self.ready:
+            Timer(1.0, self.start).start()
+        else:
+            thread.exit()
+            self.ready = True
+        
+    def start(self):
+        self.starter.set("Stop")
         kangle = Kangle(self.title.get(), self.kindledir.get(), 
             self.sourcedir.get())    
+        self.ready = False
+        thread.start_new_thread(self.run, (kangle, ))
+        while True:
+            str = "%d/%d" % (kangle._counter, kangle._amount)
+            self.label4.config(text=str)
+            if self.ready:
+                break
+        self.starter.set("Start")
+        self.label4.config(text="")
+        self.ready = False
+
+    def run(self, kangle):
         kangle.run()
-        self.button2.config(state=NORMAL)
-    
+        self.ready = True
+        
     def source(self):
         dirname = tkFileDialog.askdirectory(parent=self.window,
             initialdir=self.sourcedir.get(), 
-            title='Please select the source directory')
+            title="Please select the source directory")
         self.sourcedir.set(dirname)
     
     def target(self):    
@@ -81,7 +109,6 @@ class Kangle_GUI():
             text = "Advanced mode"
             self.advanced = True
         self.window.ml.entryconfigure(1,label=text)
-            
     
 if __name__ == "__main__":
     kangle_gui = Kangle_GUI()    
