@@ -15,7 +15,7 @@ from os import walk, mkdir, getcwd
 from os.path import join, isdir
 
 try:
-    from PIL import Image, ImageDraw
+    from PIL import Image, ImageDraw, ImageFilter
 except ImportError:
     print "please install PIL"
     exit(-2)
@@ -24,7 +24,7 @@ __author__ = "Daniel Oelschlegel"
 __copyright__ = "Copyright 2011, " + __author__
 __credits__ = [""]
 __license__ = "BSD"
-__version__ = "0.5.4"
+__version__ = "0.6"
 
 # Kangle, a symbiosis of manga and kindle
 class Kangle(object):
@@ -34,11 +34,59 @@ class Kangle(object):
     def run(self):
         self._looking()
 
+    # TODO: poly. instead of linear searching(similar to binary search)
+    def _cropping(self, image):
+        """Crops one color border from scanned image"""
+        # bad, needed better filter
+        img = image.convert('L').filter(ImageFilter.MaxFilter(size=5))
+        (width, height) = image.size
+        # for loops, every side(w,e,n,s : (parameter index, direction))
+        direction = (   (2, 1), (0, -1), 
+                        (3, 1), (1, -1))
+        # regions for checks, start region + end position
+        # max 20 percent border cut for each side
+        box = ( [0, 0, 0, height],
+                [width, 0, width, height],
+                [0, 0, width, 0],
+                [0, height, width, height] )
+        diff = []
+        dim = (width, width, height, height)
+        
+        size = len(direction)
+        for side in range(size):
+            cnt = 0
+            while cnt < dim[side]:
+                box[side][direction[side][0]] += direction[side][1]
+                # cut (increasing) region
+                border = img.crop(box[side])
+                colorCnt = len(border.getcolors())
+                if colorCnt > 1:
+                    colors = border.getcolors()
+                    base = colors[0][1]
+                    sum = 0
+                    secondChance = True
+                    for color in colors:
+                        if abs(base - color[1]) > 6:
+                            secondChance = False
+                            break
+                    if not secondChance:
+                        diff.append(cnt)
+                        break
+                   
+                cnt += 1
+            # for one color pages
+            if cnt+1 >= dim[side]:
+                return image
+        return image.crop((0+diff[0], 0+diff[2], width-diff[1], height-diff[3]))
+    
     # kindle reads the files in order of timestamp
     def adjustImage(self, filename, counter):
         """Adjust the image file filename to kindle screen and use counter
         for naming."""
         first = Image.open(filename)
+        # for more readability
+        if self.cropping:
+            first = self._cropping(first)
         # resolution of the image
         (width, height) = first.size
         filename = '%05da%s' % (counter, filename[-4:])
@@ -57,6 +105,7 @@ class Kangle(object):
         
     def _save(self, image, filename):
         """Save the image with the enabled options under the filename."""
+        # produces bad quality images, why?
         if self.stretching:
             image = image.resize(self.resolution)
         if self.footer:
@@ -106,6 +155,8 @@ class Kangle(object):
         return amount
     
     def __init__(self, title, target_dir, source, counter=0):
+        # useful when scans have too much white borders
+        self.cropping = True
         # reverse order by splitted image, usefull for reading manga
         # comics should use reverse = False
         self.reverse = True

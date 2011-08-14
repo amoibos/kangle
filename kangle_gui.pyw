@@ -65,7 +65,7 @@ class Kangle_GUI():
      
     def starttimer(self):
         if not self.ready:
-            Timer(1.0, self.start).start()
+            Timer(0.1, self.start).start()
         else:
             thread.exit()
             self.ready = True
