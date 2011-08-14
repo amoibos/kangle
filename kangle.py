@@ -24,7 +24,7 @@ __author__ = "Daniel Oelschlegel"
 __copyright__ = "Copyright 2011, " + __author__
 __credits__ = [""]
 __license__ = "BSD"
-__version__ = "0.6"
+__version__ = "0.6.1"
 
 # Kangle, a symbiosis of manga and kindle
 class Kangle(object):
@@ -105,9 +105,10 @@ class Kangle(object):
         
     def _save(self, image, filename):
         """Save the image with the enabled options under the filename."""
-        # produces bad quality images, why?
+        # workaround for a ugly pil behavior
         if self.stretching:
-            image = image.resize(self.resolution)
+            image = image.convert("RGB")
+            image = image.resize(self.resolution, Image.ANTIALIAS)
         if self.footer:
             text = "%s/%05d@%s" % (filename[:-4], self._amount, self.title)
             self._makeFootnote(image, text)
