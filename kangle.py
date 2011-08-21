@@ -24,7 +24,7 @@ __author__ = "Daniel Oelschlegel"
 __copyright__ = "Copyright 2011, " + __author__
 __credits__ = [""]
 __license__ = "BSD"
-__version__ = "0.6.1"
+__version__ = "0.6.2"
 
 # Kangle, a symbiosis of manga and kindle
 class Kangle(object):
@@ -75,7 +75,7 @@ class Kangle(object):
                    
                 cnt += 1
             # for one color pages
-            if cnt+1 >= dim[side]:
+            if cnt + 1 >= dim[side]:
                 return image
         return image.crop((0+diff[0], 0+diff[2], width-diff[1], height-diff[3]))
     
@@ -107,8 +107,12 @@ class Kangle(object):
         """Save the image with the enabled options under the filename."""
         # workaround for a ugly pil behavior
         if self.stretching:
-            image = image.convert("RGB")
-            image = image.resize(self.resolution, Image.ANTIALIAS)
+            # for better quality
+            if image.mode == "RGB":
+                image = image.convert("RGB")
+                image = image.resize(self.resolution, Image.ANTIALIAS)
+            else:
+                image = image.resize(self.resolution)
         if self.footer:
             text = "%s/%05d@%s" % (filename[:-4], self._amount, self.title)
             self._makeFootnote(image, text)
@@ -126,7 +130,9 @@ class Kangle(object):
         except KeyError:
             if image.mode == "P":
                 palette = sorted(image.getcolors(), key=lambda color:color[0])
-                fore, back = palette[-2][1], palette[-1][1]
+                if len(palette) > 1:
+                    fore, back = palette[-2][1], palette[-1][1]
+                
         draw.rectangle((x, y, image.size[0], image.size[1]), fill=back)
         draw.text((x, y), text, fill=fore)
         
@@ -142,7 +148,9 @@ class Kangle(object):
                 if filename[-4:].lower() in Kangle.supportedFormats:
                     fullName = join(curr_dir, filename)
                     self.adjustImage(fullName, self._counter)
-                    self._counter += 1  
+                    self._counter += 1
+            if not self.deepth:
+                break
     
     def _amountFiles(self):
         """Count amount of supported Files in dir and subdirectories."""
@@ -153,9 +161,11 @@ class Kangle(object):
                 # this must be supported by PIL
                 if filename[-4:].lower() in Kangle.supportedFormats:
                     amount += 1
+            if not self.deepth:
+                break
         return amount
     
-    def __init__(self, title, target_dir, source, counter=0):
+    def __init__(self, title, target_dir, source, deepth=True, counter=0):
         # useful when scans have too much white borders
         self.cropping = True
         # reverse order by splitted image, usefull for reading manga
@@ -174,6 +184,7 @@ class Kangle(object):
         self.title = title
         self._target_dir = target_dir
         self._dir = source
+        self.deepth = deepth
         # count number of supported Files
         if self.footer:
             self._amount = self._amountFiles()
