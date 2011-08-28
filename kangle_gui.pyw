@@ -10,6 +10,10 @@ from threading import Timer
 from kangle import Kangle
 
 # TODO: advanced mode
+#       add all modes and featues
+#       info box
+#       better concurrency
+#       alternative GUI(QT)
 
 __author__ = "Daniel Oelschlegel"
 __copyright__ = "Copyright 2011, " + __author__
