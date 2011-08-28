@@ -105,14 +105,11 @@ class Kangle(object):
         
     def _save(self, image, filename):
         """Save the image with the enabled options under the filename."""
-        # workaround for a ugly pil behavior
         if self.stretching:
             # for better quality
-            if image.mode == "RGB":
-                image = image.convert("RGB")
-                image = image.resize(self.resolution, Image.ANTIALIAS)
-            else:
-                image = image.resize(self.resolution)
+            image = image.convert("RGB")
+            image = image.resize(self.resolution, Image.BILINEAR)
+        
         if self.footer:
             text = "%s/%05d@%s" % (filename[:-4], self._amount, self.title)
             self._makeFootnote(image, text)
@@ -210,5 +207,6 @@ if __name__ == "__main__":
     kangle = Kangle(title, target_dir, getcwd())    
     print "found", kangle._amount, "files"
     print "converting & transferring ...",
+    #cProfile.run('kangle.run()')
     kangle.run()
     print "finished"
