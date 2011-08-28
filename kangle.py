@@ -14,6 +14,8 @@ from sys import exit, argv, stderr
 from os import walk, mkdir, getcwd
 from os.path import join, isdir
 
+#import cProfile
+
 try:
     from PIL import Image, ImageDraw, ImageFilter
 except ImportError:
@@ -52,11 +54,11 @@ class Kangle(object):
         diff = []
         dim = (width, width, height, height)
         
-        size = len(direction)
-        for side in range(size):
+        for side in range(len(direction)):
             cnt = 0
             while cnt < dim[side]:
-                box[side][direction[side][0]] += direction[side][1]
+                idx = direction[side]
+                box[side][idx[0]] += idx[1]
                 # cut (increasing) region
                 border = img.crop(box[side])
                 colorCnt = len(border.getcolors())
@@ -72,8 +74,8 @@ class Kangle(object):
                     if not secondChance:
                         diff.append(cnt)
                         break
-                   
                 cnt += 1
+                
             # for one color pages
             if cnt + 1 >= dim[side]:
                 return image
