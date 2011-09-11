@@ -16,6 +16,9 @@ from os.path import join, isdir
 
 #import cProfile
 
+# TODO: BUG image file is truncated (0 bytes not processed)
+#        convert('L')
+
 try:
     from PIL import Image, ImageDraw, ImageFilter
 except ImportError:
@@ -26,7 +29,7 @@ __author__ = "Daniel Oelschlegel"
 __copyright__ = "Copyright 2011, " + __author__
 __credits__ = [""]
 __license__ = "BSD"
-__version__ = "0.6.2"
+__version__ = "0.6.3"
 
 # Kangle, a symbiosis of manga and kindle
 class Kangle(object):
@@ -85,7 +88,13 @@ class Kangle(object):
     def adjustImage(self, filename, counter):
         """Adjust the image file filename to kindle screen and use counter
         for naming."""
-        first = Image.open(filename)
+        try:
+            first = Image.open(filename)
+        except IOError:
+            print "damaged image file"
+            if skipping:
+                return
+            exit(-3)
         # for more readability
         if self.cropping:
             first = self._cropping(first)
@@ -130,7 +139,7 @@ class Kangle(object):
             if image.mode == "P":
                 palette = sorted(image.getcolors(), key=lambda color:color[0])
                 if len(palette) > 1:
-                    fore, back = palette[-2][1], palette[-1][1]
+                    fore, back = palette[0][1], palette[-1][1]
                 
         draw.rectangle((x, y, image.size[0], image.size[1]), fill=back)
         draw.text((x, y), text, fill=fore)
@@ -180,6 +189,8 @@ class Kangle(object):
         self._counter = counter
         # resolution of your kindle, required for stretching
         self.resolution = (600, 800)
+        # skipping by damaged images or abort
+        self.skipping = False
         self.title = title
         self._target_dir = target_dir
         self._dir = source
