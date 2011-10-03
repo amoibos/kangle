@@ -13,6 +13,7 @@
 from sys import exit, argv, stderr
 from os import walk, mkdir, getcwd
 from os.path import join, isdir
+from glob import glob
 
 #import cProfile
 
@@ -29,7 +30,7 @@ __author__ = "Daniel Oelschlegel"
 __copyright__ = "Copyright 2011, " + __author__
 __credits__ = [""]
 __license__ = "BSD"
-__version__ = "0.6.3"
+__version__ = "0.6.4"
 
 # Kangle, a symbiosis of manga and kindle
 class Kangle(object):
@@ -86,7 +87,7 @@ class Kangle(object):
     
     # kindle reads the files in order of timestamp
     def adjustImage(self, filename, counter):
-        """Adjust the image file filename to kindle screen and use counter
+        """Adjusts the image file filename to kindle screen and use counter
         for naming."""
         try:
             first = Image.open(filename)
@@ -115,7 +116,7 @@ class Kangle(object):
         self._save(first, filename)
         
     def _save(self, image, filename):
-        """Save the image with the enabled options under the filename."""
+        """Saves the image with the enabled options under the filename."""
         if self.stretching:
             # for better quality
             image = image.convert("RGB")
@@ -128,7 +129,7 @@ class Kangle(object):
         image.save(fullName)
             
     def _makeFootnote(self, image, text):
-        """Write the text downright."""
+        """Writes the text downright."""
         draw = ImageDraw.Draw(image)
         width, height = draw.textsize(text)
         x, y = image.size[0] - width, image.size[1] - height
@@ -146,7 +147,7 @@ class Kangle(object):
         
     # optimized recursive search
     def _looking(self):
-        """Find supported pictures in dir."""
+        """Finds supported pictures in dir."""
         for curr_dir, dirs, files in walk(self._dir):
             dirs.sort()
             files.sort()
@@ -161,7 +162,7 @@ class Kangle(object):
                 break
     
     def _amountFiles(self):
-        """Count amount of supported Files in dir and subdirectories."""
+        """Counts amount of supported Files in dir and subdirectories."""
         amount = 0
         for _, _, files in walk(self._dir):
             for filename in files:
@@ -173,9 +174,18 @@ class Kangle(object):
                 break
         return amount
     
+    def _writeSavePoint(self, target_dir, title, siteno):
+        """Writes a resume file for the given title"""
+        filename = glob("%s/pictures/%s/%05d*" % (target_dir, title, siteno))[0]
+        with open("%s/pictures/%s.manga_save" % (target_dir, title)) as f:
+            f.write("#Fri Sep 02 18:20:13 GMT+01:16 2011")
+            f.write("LAST=/mnt/us/pictures/%s/%s" % (title, filename))
+        with open("%s/pictures/%s.manga" % (target_dir, title)) as f:
+            f.write("\0")    
+    
     def __init__(self, title, target_dir, source, deepth=True, counter=0):
         # useful when scans have too much white borders
-        self.cropping = True
+        self.cropping = False
         # reverse order by splitted image, usefull for reading manga
         # comics should use reverse = False
         self.reverse = True
@@ -190,7 +200,7 @@ class Kangle(object):
         # resolution of your kindle, required for stretching
         self.resolution = (600, 800)
         # skipping by damaged images or abort
-        self.skipping = False
+        self.skipping = True
         self.title = title
         self._target_dir = target_dir
         self._dir = source
