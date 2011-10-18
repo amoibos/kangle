@@ -149,8 +149,8 @@ class Kangle(object):
     def _looking(self):
         """Finds supported pictures in dir."""
         for curr_dir, dirs, files in walk(self._dir):
-            dirs.sort()
-            files.sort()
+            dirs = sorted(dirs, key=str.lower)
+            files = sorted(files, key=str.lower)
             for filename in files:
                 # filter for file extensions, 
                 # this must be supported by PIL
