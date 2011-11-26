@@ -30,7 +30,7 @@ __author__ = "Daniel Oelschlegel"
 __copyright__ = "Copyright 2011, " + __author__
 __credits__ = [""]
 __license__ = "BSD"
-__version__ = "0.6.5"
+__version__ = "0.6.6"
 
 # Kangle, a symbiosis of manga and kindle
 class Kangle(object):
@@ -131,9 +131,9 @@ class Kangle(object):
     def _makeFootnote(self, image, text):
         """Writes the text downright."""
         draw = ImageDraw.Draw(image)
-        if self._height == None:
-            self._width, self._height = draw.textsize(text)
-            self._x, self._y = image.size[0] - self._width, image.size[1] - self._height
+        if self._x is None:
+            width, height = draw.textsize(text)
+            self._x, self._y = image.size[0] - width, image.size[1] - height
         fore, back = 0, "white"
         try:
             back = image.info["transparency"]
@@ -209,7 +209,7 @@ class Kangle(object):
         # count number of supported Files
         if self.footer:
             self._amount = self._amountFiles()
-            self._height = None
+            self._x = None
         for dir in ["pictures", title]:
             self._target_dir = join(self._target_dir, dir)
             if not isdir(self._target_dir):
