@@ -30,7 +30,7 @@ __author__ = "Daniel Oelschlegel"
 __copyright__ = "Copyright 2011, " + __author__
 __credits__ = [""]
 __license__ = "BSD"
-__version__ = "0.6.4"
+__version__ = "0.6.5"
 
 # Kangle, a symbiosis of manga and kindle
 class Kangle(object):
@@ -93,7 +93,7 @@ class Kangle(object):
             first = Image.open(filename)
         except IOError:
             print "damaged image file"
-            if skipping:
+            if self.skipping:
                 return
             exit(-3)
         # for more readability
@@ -138,7 +138,7 @@ class Kangle(object):
             back = image.info["transparency"]
         except KeyError:
             if image.mode == "P":
-                palette = sorted(image.getcolors(), key=lambda color:color[0])
+                palette = sorted(image.getcolors(), key=lambda color:sum(color))
                 if len(palette) > 1:
                     fore, back = palette[0][1], palette[-1][1]
                 
