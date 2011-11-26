@@ -131,8 +131,9 @@ class Kangle(object):
     def _makeFootnote(self, image, text):
         """Writes the text downright."""
         draw = ImageDraw.Draw(image)
-        width, height = draw.textsize(text)
-        x, y = image.size[0] - width, image.size[1] - height
+        if self._height == None:
+            self._width, self._height = draw.textsize(text)
+            self._x, self._y = image.size[0] - self._width, image.size[1] - self._height
         fore, back = 0, "white"
         try:
             back = image.info["transparency"]
@@ -142,8 +143,8 @@ class Kangle(object):
                 if len(palette) > 1:
                     fore, back = palette[0][1], palette[-1][1]
                 
-        draw.rectangle((x, y, image.size[0], image.size[1]), fill=back)
-        draw.text((x, y), text, fill=fore)
+        draw.rectangle((self._x, self._y, image.size[0], image.size[1]), fill=back)
+        draw.text((self._x, self._y), text, fill=fore)
         
     # optimized recursive search
     def _looking(self):
@@ -208,6 +209,7 @@ class Kangle(object):
         # count number of supported Files
         if self.footer:
             self._amount = self._amountFiles()
+            self._height = None
         for dir in ["pictures", title]:
             self._target_dir = join(self._target_dir, dir)
             if not isdir(self._target_dir):
