@@ -119,7 +119,11 @@ class Kangle(object):
         """Saves the image with the enabled options under the filename."""
         if self.stretching:
             # for better quality
-            image = image.convert("RGB")
+            try:
+                image = image.convert("RGB")
+            except IOError:
+                # ups, something goes wrong
+                pass
             image = image.resize(self.resolution, Image.BILINEAR)
         
         if self.footer:
@@ -227,9 +231,10 @@ if __name__ == "__main__":
             print "Thanks to", __credits__
             exit(0) 
         else:
-            print >> stderr, "arguments: <TITLE> <KINDLE_ROOT_DIRECTORY>"
+            print >> stderr, "arguments: TITLE KINDLE_ROOT_DIRECTORY <SOURCE>"
             exit(-1)
-    kangle = Kangle(title, target_dir, getcwd())    
+    source =  argv[3] if len(argv) > 3 else getcwd()
+    kangle = Kangle(title, target_dir, source)    
     print "found", kangle._amount, "files"
     print "converting & transferring ...",
     #cProfile.run('kangle.run()')
