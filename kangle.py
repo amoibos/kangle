@@ -7,8 +7,8 @@
 # start this program in a subdirectory that contains picture files or
 # directories
 # press [ALT] + [z] for rereading the entries in pictures on a kindle
-
 # kindle tip: [ALT] + [f] = fullscreen,  [ALT] + [p] clear the boundary
+
 from PIL import Image, ImageDraw, ImageFilter
 from sys import exit, argv, stderr
 from os import walk, mkdir, getcwd
