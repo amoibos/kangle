@@ -21,14 +21,11 @@ import zlib
 # TODO: BUG image file is truncated (0 bytes not processed)
 #        convert('L')
 
-# TODO: FEATURE
-#       arbitrary footnote strings
-
 __author__ = "Daniel Oelschlegel"
 __copyright__ = "Copyright 2011, " + __author__
 __credits__ = [""]
 __license__ = "BSD"
-__version__ = "0.7"
+__version__ = "0.7.1"
 
 # Kangle, a symbiosis of manga and kindle
 class Kangle(object):
@@ -126,7 +123,7 @@ class Kangle(object):
             image = image.resize(self.resolution, Image.BILINEAR)
         
         if self.footer:
-            text = "%s/%05d@%s" % (fileName[:-4], self._amount, self.title)
+            text = self.signature[0] % tuple(map(eval, self.signature[1]))
             self._makeFootnote(image, text)
         fullName = join(self._targetDir, fileName)
         image.save(fullName)
@@ -233,6 +230,7 @@ class Kangle(object):
         self.deepth = deepth
         # count number of supported Files
         if self.footer:
+            self.signature = ("%s/%05d@%s", ("fileName[:-4]", "self._amount", "self.title"))
             self._amount = self._amountFiles()
             self._x = None
         for dir in ["pictures", title]:
