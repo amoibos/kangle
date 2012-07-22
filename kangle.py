@@ -4,33 +4,28 @@
 # License: 2-clause BSD
 
 # this program requires a plugged kindle, at least python 2.* and PIL
-# start this program in a subdirectory that contains picture files or 
+# start this program in a subdirectory that contains picture files or
 # directories
 # press [ALT] + [z] for rereading the entries in pictures on a kindle
+# kindle tip: [ALT] + [f] = fullscreen,  [ALT] + [p] clear the boundary
 
-# kindle tip: [ALT] + [f] = fullscreen, 2x [ALT] + [p] clear the boundary
-
+from PIL import Image, ImageDraw, ImageFilter
 from sys import exit, argv, stderr
 from os import walk, mkdir, getcwd
-from os.path import join, isdir
+from os.path import join, isdir, getsize
 from glob import glob
+import zlib
 
 #import cProfile
 
 # TODO: BUG image file is truncated (0 bytes not processed)
 #        convert('L')
 
-try:
-    from PIL import Image, ImageDraw, ImageFilter
-except ImportError:
-    print "please install PIL"
-    exit(-2)
-
 __author__ = "Daniel Oelschlegel"
 __copyright__ = "Copyright 2011, " + __author__
 __credits__ = [""]
 __license__ = "BSD"
-__version__ = "0.6.6"
+__version__ = "0.7.1"
 
 # Kangle, a symbiosis of manga and kindle
 class Kangle(object):
@@ -83,14 +78,15 @@ class Kangle(object):
             # for one color pages
             if cnt + 1 >= dim[side]:
                 return image
-        return image.crop((0+diff[0], 0+diff[2], width-diff[1], height-diff[3]))
+        return image.crop((0+diff[0], 0+diff[2], 
+            width-diff[1], height-diff[3]))
     
     # kindle reads the files in order of timestamp
-    def adjustImage(self, filename, counter):
-        """Adjusts the image file filename to kindle screen and use counter
+    def adjustImage(self, fileName, counter):
+        """Adjusts the image file fileName to kindle screen and use counter
         for naming."""
         try:
-            first = Image.open(filename)
+            first = Image.open(fileName)
         except IOError:
             print "damaged image file"
             if self.skipping:
@@ -101,7 +97,7 @@ class Kangle(object):
             first = self._cropping(first)
         # resolution of the image
         (width, height) = first.size
-        filename = '%05da%s' % (counter, filename[-4:])
+        fileName = '%05da%s' % (counter, fileName[-4:])
         # too wide, better splitting in middle
         if self.splitting and width > height:
             # take the second half and resize
@@ -111,12 +107,12 @@ class Kangle(object):
             # save in correct order
             if not self.reverse:
                 first, second = second, first
-            self._save(second, filename)
-            filename = filename.replace("a", "b")
-        self._save(first, filename)
+            self._save(second, fileName)
+            fileName = fileName.replace("a", "b")
+        self._save(first, fileName)
         
-    def _save(self, image, filename):
-        """Saves the image with the enabled options under the filename."""
+    def _save(self, image, fileName):
+        """Saves the image with the enabled options under the fileName."""
         if self.stretching:
             # for better quality
             try:
@@ -127,9 +123,9 @@ class Kangle(object):
             image = image.resize(self.resolution, Image.BILINEAR)
         
         if self.footer:
-            text = "%s/%05d@%s" % (filename[:-4], self._amount, self.title)
+            text = self.signature[0] % tuple(map(eval, self.signature[1]))
             self._makeFootnote(image, text)
-        fullName = join(self._target_dir, filename)
+        fullName = join(self._targetDir, fileName)
         image.save(fullName)
             
     def _makeFootnote(self, image, text):
@@ -139,9 +135,9 @@ class Kangle(object):
             width, height = draw.textsize(text)
             self._x, self._y = image.size[0] - width, image.size[1] - height
         fore, back = 0, "white"
-        try:
+        if  "transparency" in image.info:
             back = image.info["transparency"]
-        except KeyError:
+        else:
             if image.mode == "P":
                 palette = sorted(image.getcolors(), key=lambda color:sum(color))
                 if len(palette) > 1:
@@ -149,6 +145,19 @@ class Kangle(object):
                 
         draw.rectangle((self._x, self._y, image.size[0], image.size[1]), fill=back)
         draw.text((self._x, self._y), text, fill=fore)
+    
+    def _double(self, fileName):
+        """Find doubles"""
+        fileSize = getsize(fileName)
+        for element in Image.open(fileName).getdata():
+            hashCode = zlib.crc32(str(element))   
+        if fileSize not in self._duplicate:
+            self._duplicate[fileSize] = {hashCode: True}
+            return False
+        if hashCode in self._duplicate[fileSize]:
+            return True
+        self._duplicate[fileSize][hashCode] = True
+        return False    
         
     # optimized recursive search
     def _looking(self):
@@ -156,11 +165,14 @@ class Kangle(object):
         for curr_dir, dirs, files in walk(self._dir):
             dirs = sorted(dirs, key=str.lower)
             files = sorted(files, key=str.lower)
-            for filename in files:
+            for fileName in files:
                 # filter for file extensions, 
                 # this must be supported by PIL
-                if filename[-4:].lower() in Kangle.supportedFormats:
-                    fullName = join(curr_dir, filename)
+                if fileName[-4:].lower() in Kangle.supportedFormats:
+                    fullName = join(curr_dir, fileName)
+                    if not self.duplicating and self._double(fullName):
+                        self.doubleCounter += 1
+                        continue
                     self.adjustImage(fullName, self._counter)
                     self._counter += 1
             if not self.deepth:
@@ -170,25 +182,31 @@ class Kangle(object):
         """Counts amount of supported Files in dir and subdirectories."""
         amount = 0
         for _, _, files in walk(self._dir):
-            for filename in files:
+            for fileName in files:
                 # filter for file extensions, 
                 # this must be supported by PIL
-                if filename[-4:].lower() in Kangle.supportedFormats:
+                if fileName[-4:].lower() in Kangle.supportedFormats:
                     amount += 1
             if not self.deepth:
                 break
         return amount
-    
-    def _writeSavePoint(self, target_dir, title, siteno):
+  
+    def _writeSavePoint(self, targetDir, title, siteno):
         """Writes a resume file for the given title"""
-        filename = glob("%s/pictures/%s/%05d*" % (target_dir, title, siteno))[0]
-        with open("%s/pictures/%s.manga_save" % (target_dir, title)) as f:
+        fileName = glob("%s/pictures/%s/%05d*" % (targetDir, title, siteno))[0]
+        with open("%s/pictures/%s.manga_save" % (targetDir, title)) as f:
             f.write("#Fri Sep 02 18:20:13 GMT+01:16 2011")
-            f.write("LAST=/mnt/us/pictures/%s/%s" % (title, filename))
-        with open("%s/pictures/%s.manga" % (target_dir, title)) as f:
+            f.write("LAST=/mnt/us/pictures/%s/%s" % (title, fileName))
+        with open("%s/pictures/%s.manga" % (targetDir, title)) as f:
             f.write("\0")    
+
     
-    def __init__(self, title, target_dir, source, deepth=True, counter=0):
+    def __init__(self, title, targetDir, source, deepth=True, counter=0):
+        # eliminate duplicates
+        self.duplicating = False
+        self._duplicate = {}
+        # for statistics
+        self.doubleCounter = 0
         # useful when scans have too much white borders
         self.cropping = False
         # reverse order by splitted image, usefull for reading manga
@@ -207,36 +225,41 @@ class Kangle(object):
         # skipping by damaged images or abort
         self.skipping = True
         self.title = title
-        self._target_dir = target_dir
+        self._targetDir = targetDir
         self._dir = source
         self.deepth = deepth
         # count number of supported Files
         if self.footer:
+            self.signature = ("%s/%05d@%s", ("fileName[:-4]", "self._amount", "self.title"))
             self._amount = self._amountFiles()
             self._x = None
         for dir in ["pictures", title]:
-            self._target_dir = join(self._target_dir, dir)
-            if not isdir(self._target_dir):
-                mkdir(self._target_dir)
+            self._targetDir = join(self._targetDir, dir)
+            if not isdir(self._targetDir):
+                mkdir(self._targetDir)
             elif dir != "pictures":
                 print >> stderr, "directory ", dir, " already exists"
 
 if __name__ == "__main__":
     try:
-        # sys.argv[2] could look like "D:\"(windows) or "/media/kindle"(unix)
-        title, target_dir = argv[1], argv[2]
+        # sys.argv[2] could look like "D:\"(Windows) or "/media/kindle"(Unix-like)
+        title, targetDir = argv[1], argv[2]
     except IndexError:
         if len(argv) > 1 and argv[1] == "--version":
             print "Kangle version ", __version__," by ", __author__
             print "Thanks to", __credits__
-            exit(0) 
+            exit(0)
         else:
             print >> stderr, "arguments: TITLE KINDLE_ROOT_DIRECTORY <SOURCE>"
             exit(-1)
     source =  argv[3] if len(argv) > 3 else getcwd()
-    kangle = Kangle(title, target_dir, source)    
+    kangle = Kangle(title, targetDir, source)
     print "found", kangle._amount, "files"
     print "converting & transferring ...",
+    if not kangle.duplicating: 
+        print "\ndoubles found: ",
     #cProfile.run('kangle.run()')
     kangle.run()
+    if not kangle.duplicating: 
+        print "%d" % kangle.doubleCounter
     print "finished"
