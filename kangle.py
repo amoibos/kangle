@@ -1,9 +1,10 @@
 #! /usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # Copyright 2011, Daniel Oelschlegel <amoibos@gmail.com>
 # License: 2-clause BSD
 
-# this program requires a plugged kindle, at least python 2.* and PIL
+# this program requires a plugged kindle, at least python 2.5 and PIL
 # start this program in a subdirectory that contains picture files or
 # directories
 # press [ALT] + [z] for rereading the entries in pictures on a kindle
@@ -14,18 +15,21 @@ from sys import exit, argv, stderr
 from os import walk, mkdir, getcwd
 from os.path import join, isdir, getsize
 from glob import glob
-import zlib
-import getopt
+import zipfile
+from getopt import getopt
 import re
-import threading
+from threading import Timer
+import tempfile
+import shutil
+#from thread import start_new_thread
 
-## ZIP Archive entpacken
+## PDF Extraktion
 ## GUI(TK) 
 ## Kommandozeilenparameter(Standard abaendern+Parameter info)
 ## Buildskript und EXE beilegen
 ## Viewer Testmode
 
-#import cProfile
+import cProfile
 
 
 # getopt or config parser for standalone program behavior
@@ -36,27 +40,28 @@ __author__ = "Daniel Oelschlegel"
 __copyright__ = "Copyright 2012, " + __author__
 __credits__ = [""]
 __license__ = "BSD"
-__version__ = "0.8pre"
+__version__ = "0.8"
 
 # Kangle, a symbiosis of manga and kindle
 class Kangle(object):
     """Kangle makes manga scans readable on a kindle device."""
-    supportedFormats = ['.jpg', '.png', '.gif', '.bmp']
+    supportedFormats = ('.jpg', '.png', '.gif', '.bmp')
     
-    def timer(self, firstRun=false):
+    def progress(self, firstRun=False):
         """Call every 30s this function for printing the progress on screen"""
-        #TODO: stack exhaustion?
-        if self.TimerActivated:
-            threading.Timer(30, timer)
+        if self.timerActivated:
+            self._thread = Timer(30, self.progress)
+            self._thread.start()
             if not firstRun:
-                percent = 100 * self.counter // self._amountFiles
-                if percent not in self._progress
-                    print " %s" % self.counter
+                percent = 100 * self._counter / self._amount
+                if percent not in self._progress:
+                    print " %s" % percent,
                     self._progress[percent] = True
         
-    def run(self):
-        self.timer(true)
-        self._looking()
+    def start(self):
+        self.progress(True)
+        self._looking(self._dir)
+        self._thread.cancel()
 
     # TODO: poly. instead of linear searching(similar to binary search)
     def _cropping(self, image):
@@ -76,7 +81,7 @@ class Kangle(object):
         diff = []
         dim = (width, width, height, height)
         
-        for side in range(len(direction)):
+        for side, _ in enumerate(direction):
             cnt = 0
             while cnt < dim[side]:
                 idx = direction[side]
@@ -107,7 +112,7 @@ class Kangle(object):
     # kindle reads the files in order of timestamp
     def adjustImage(self, fileName, counter):
         """Adjusts the image file fileName to kindle screen and use counter for naming."""
-       try:
+        try:
             first = Image.open(fileName)
         except IOError:
             print >> stderr, "damaged image file: %s" % self.fileName
@@ -148,8 +153,10 @@ class Kangle(object):
             text = self.signature[0] % tuple(map(eval, self.signature[1]))
             self._makeFootnote(image, text)
         fullName = join(self._targetDir, fileName)
+        #saving in right order, synchronication?
+        #start_new_thread(image.save, (fullName, ))       
         image.save(fullName)
-            
+        
     def _makeFootnote(self, image, text):
         """Writes the text downright."""
         draw = ImageDraw.Draw(image)
@@ -181,30 +188,38 @@ class Kangle(object):
         self._duplicate[fileSize][hashCode] = True
         return False    
         
-    def numSort(self, fileList):
-        numPattern = re.compile(r'\d+.', re.IGNORECASE)
-        fileList.sort(cmp, key=kambda tFile: float(numPattern.search(tFile).group(1)))
+    def _numSort(self, fileList):
+        backup = fileList[:]
+        try:
+            fileList.sort(cmp, key=lambda tFile: float(self.numPattern.search(tFile).group(0)))
+        except AttributeError:
+            fileList = backup
         return fileList    
         
+     
     # optimized recursive search
-    def _looking(self):
+    def _looking(self, dir):
         """Finds supported pictures in dir."""
-        for curr_dir, dirs, files in walk(self._dir):
-            dirs = sorted(dirs, key=str.lower)
-            dirs = numSort(dirs)
-            files = sorted(files, key=str.lower)
-            files = numSort(files)
+        for curr_dir, dirs, files in walk(dir):
+            dirs = self._numSort(dirs) if self.numSort else sorted(dirs, key=str.lower)
+            files = self._numSort(files) if self.numSort else sorted(files, key=str.lower)
             for fileName in files:
                 # filter for file extensions, 
                 # this must be supported by PIL
-                if fileName[-4:].lower() in Kangle.supportedFormats:
-                    fullName = join(curr_dir, fileName)
+                self.fileName = fileName
+                fullName = join(curr_dir, fileName)
+                file_extension = fullName[-4:].lower()
+                if file_extension in ('.zip'):
+                    temp_dir = tempfile.mkdtemp()
+                    zipfile.ZipFile(fullName).extractall(temp_dir)
+                    self._looking(temp_dir)
+                    shutil.rmtree(temp_dir)
+                elif file_extension in Kangle.supportedFormats:
                     if not self.duplicating and self._double(fullName):
                         self.doubleCounter += 1
                         continue
-                    self.fileName = fileName
                     self.adjustImage(fullName, self._counter)
-                    self._counter += 1
+                self._counter += 1
             if not self.deepth:
                 break
     
@@ -238,7 +253,7 @@ class Kangle(object):
         # useful when scans have too much white borders
         self.cropping = False
         # reverse order by splitted image, usefull for reading manga
-        # comics(left to right) should use reverse = False
+        # comics(left to right), manhwa should use reverse = False
         self.reverse = True
         # splitting if the image is too wide
         self.splitting = True
@@ -256,9 +271,12 @@ class Kangle(object):
         self._targetDir = targetDir
         self._dir = source
         self.deepth = deepth
-        self.TimerActivated = True
+        self._buffer = []
+        self.timerActivated = True
         #for displaying progress in percent and only once
         self._progress = {} 
+        self.numSort = False#True
+        self._thread = None
         # count number of supported Files
         if self.footer:
             self.signature = ("%s/%05d@%s", ("fileName[:-4]", "self._amount", "self.title"))
@@ -270,9 +288,10 @@ class Kangle(object):
                 mkdir(self._targetDir)
             elif dir != "pictures":
                 print >> stderr, "directory ", dir, " already exists"
+        self.numPattern = re.compile(r'\d+')
 
 if __name__ == "__main__":
-    options, remainder = getopt.getopt(argv[1:], 'dcr:v', [
+    options, remainder = getopt(argv[1:], 'dcrxsh:v', [
                                                          'info',
                                                          'version=',
                                                          ])
@@ -294,8 +313,8 @@ if __name__ == "__main__":
     print "converting & transferring ...",
     if not kangle.duplicating: 
         print "\ndoubles found: ",
-    #cProfile.run('kangle.run()')
-    kangle.run()
+    #cProfile.run('kangle.start()')
+    kangle.start()
     if not kangle.duplicating: 
         print "%d" % kangle.doubleCounter
     print "finished"
