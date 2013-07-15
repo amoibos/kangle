@@ -37,10 +37,10 @@ import cProfile
 #        convert('L')
 
 __author__ = "Daniel Oelschlegel"
-__copyright__ = "Copyright 2012, " + __author__
+__copyright__ = "Copyright 2013, " + __author__
 __credits__ = [""]
 __license__ = "BSD"
-__version__ = "0.8"
+__version__ = "0.8.1"
 
 # Kangle, a symbiosis of manga and kindle
 class Kangle(object):
@@ -200,9 +200,12 @@ class Kangle(object):
     # optimized recursive search
     def _looking(self, dir):
         """Finds supported pictures in dir."""
-        for curr_dir, dirs, files in walk(dir):
-            dirs = self._numSort(dirs) if self.numSort else sorted(dirs, key=str.lower)
-            files = self._numSort(files) if self.numSort else sorted(files, key=str.lower)
+        for curr_dir, dirs, files in walk(unicode(dir)):
+            dirs = [dir.encode("utf8").lower() for dir in dirs]
+            dirs = self._numSort(dirs) if self.numSort else sorted(dirs)
+            files = [f.encode("utf8").lower() for f in files]
+            files = self._numSort(files) if self.numSort else sorted(files)
+            dirs, files = [unicode(item, "utf8") for item in dirs],  [unicode(item, "utf8") for item in files]
             for fileName in files:
                 # filter for file extensions, 
                 # this must be supported by PIL
@@ -226,7 +229,7 @@ class Kangle(object):
     def _amountFiles(self):
         """Counts amount of supported Files in dir and subdirectories."""
         amount = 0
-        for _, _, files in walk(self._dir):
+        for _, _, files in walk(unicode(self._dir)):
             for fileName in files:
                 # filter for file extensions, 
                 # this must be supported by PIL
