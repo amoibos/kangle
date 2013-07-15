@@ -15,7 +15,7 @@ from sys import exit, argv, stderr
 from os import walk, mkdir, getcwd
 from os.path import join, isdir, getsize
 from glob import glob
-import zipfile
+from zipfile import ZipFile
 from getopt import getopt
 import re
 from threading import Timer
@@ -60,7 +60,7 @@ class Kangle(object):
         
     def start(self):
         self.progress(True)
-        self._looking(self._dir)
+        self.looking(self._dir)
         self._thread.cancel()
 
     # TODO: poly. instead of linear searching(similar to binary search)
@@ -198,14 +198,14 @@ class Kangle(object):
         
      
     # optimized recursive search
-    def _looking(self, dir):
+    def looking(self, dir):
         """Finds supported pictures in dir."""
         for curr_dir, dirs, files in walk(unicode(dir)):
-            dirs = [dir.encode("utf8").lower() for dir in dirs]
+            dirs = [dir.encode("utf-8").lower() for dir in dirs]
             dirs = self._numSort(dirs) if self.numSort else sorted(dirs)
-            files = [f.encode("utf8").lower() for f in files]
+            files = [f.encode("utf-8").lower() for f in files]
             files = self._numSort(files) if self.numSort else sorted(files)
-            dirs, files = [unicode(item, "utf8") for item in dirs],  [unicode(item, "utf8") for item in files]
+            dirs, files = [item.decode("utf-8") for item in dirs],  [item.decode("utf-8") for item in files]
             for fileName in files:
                 # filter for file extensions, 
                 # this must be supported by PIL
@@ -214,8 +214,8 @@ class Kangle(object):
                 file_extension = fullName[-4:].lower()
                 if file_extension in ('.zip'):
                     temp_dir = tempfile.mkdtemp()
-                    zipfile.ZipFile(fullName).extractall(temp_dir)
-                    self._looking(temp_dir)
+                    ZipFile(fullName).extractall(temp_dir)
+                    self.looking(temp_dir)
                     shutil.rmtree(temp_dir)
                 elif file_extension in Kangle.supportedFormats:
                     if not self.duplicating and self._double(fullName):
