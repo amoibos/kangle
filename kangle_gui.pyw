@@ -3,7 +3,7 @@
 # Copyright 2011, Daniel Oelschlegel <amoibos@gmail.com>
 # License: 2-clause BSD
 
-from Tkinter import *
+from Tkinter import Label, Entry, StringVar, Menu, Button, SUNKEN, Tk
 from os.path import exists
 import tkFileDialog
 from thread import exit, start_new_thread
@@ -22,10 +22,10 @@ __credits__ = [""]
 __license__ = "BSD"
 __version__ = "0.2.1"
 
-class Kangle_GUI():
+class Kangle_GUI(object):
     
     def __init__(self):
-        self.window = Tk(className="Kangle GUI")
+        self.window = Tk(className="Kangle(%s)" % __version__)
         self.window.resizable(False, False)
         self.window.ml = Menu(self.window)
         self.window.ml.add_command(label="Simple mode", command=self.menu)
@@ -34,14 +34,14 @@ class Kangle_GUI():
         self.titlecaption = Label(self.window, text="Title: ", pady=10)
         self.titlecaption.grid(row=0,column=0)
         self.title = StringVar()
-        self.titlefield = Entry(self.window, textvariable=self.title)
+        self.titlefield = Entry(self.window, textvariable=self.title, bd=5)
         self.title.set("Sample")
         self.titlefield.grid(row=0, column=1)
         
         self.kindledircaption = Label(self.window, text="Kindle dir: ", pady=10)
         self.kindledircaption.grid(row=1, column=0)
         self.kindledir = StringVar()
-        self.targetfield = Entry(self.window,textvariable=self.kindledir)
+        self.targetfield = Entry(self.window,textvariable=self.kindledir, bd=5)
         self.kindledir.set("E:\\")
         self.targetfield.grid(row=1, column=1)
         self.kindlebrowser = Button(master=self.window, text="...", command=self.target)
@@ -50,7 +50,7 @@ class Kangle_GUI():
         self.sourcedircaption = Label(self.window, text="Source dir: ", pady=10)
         self.sourcedircaption.grid(row=2, column=0)
         self.sourcedir = StringVar()
-        self.sourcefield = Entry(self.window, textvariable=self.sourcedir)
+        self.sourcefield = Entry(self.window, textvariable=self.sourcedir, bd=5)
         self.sourcedir.set(r"C:\pictures")
         self.sourcefield.grid(row=2, column=1)
         self.sourcebrowser = Button(master=self.window, text="...", command=self.source)
@@ -63,7 +63,7 @@ class Kangle_GUI():
         self.startbutton.grid(row=3, column=1)
         
         self.advanced = self.ready = False
-        self.progressbar = Label(master=self.window, text="", relief=SUNKEN, width=50)
+        self.progressbar = Label(master=self.window, text="", relief=SUNKEN, width=60)
         self.progressbar.grid(sticky="w", columnspan=3, pady=5)
         self.window.mainloop()
      
