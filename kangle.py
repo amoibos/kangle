@@ -8,7 +8,7 @@
 #start this program in a subdirectory that contains picture files or
 #directories
 #press [ALT] + [z] for rereading the entries in pictures on a kindle
-#kindle tip: [ALT] + [f] = fullscreen,  [ALT] + [p] clear the boundary
+#kindle tip: [ALT] + [f] = full screen,  [ALT] + [p] clear the boundary
 
 from PIL import Image, ImageDraw, ImageFilter
 from sys import exit, argv, stderr, stdout
@@ -17,11 +17,11 @@ from os.path import join, isdir, getsize, splitext
 from glob import glob
 from zipfile import ZipFile
 from getopt import getopt
-import re
+from re import compile
 from threading import Timer
-import tempfile
-import shutil
-import zlib
+from tempfile import mkdtemp
+from shutil import rmtree
+from zlib import crc32
 #from thread import start_new_thread
 
 ## PDF Extraktion
@@ -210,7 +210,7 @@ class Kangle(object):
                 self.file_name = file_name
                 full_name = join(curr_dir, file_name)
                 file_extension = splitext(file_name)[1].lower()
-                if file_extension in ('.zip'):
+                if file_extension in ('.zip', '.cbz'):
                     temp_dir = self._temp_dirs[file_name]
                     self.looking(temp_dir)
                     shutil.rmtree(temp_dir)
