@@ -23,9 +23,8 @@ __license__ = "BSD"
 __version__ = "0.2.1"
 
 class Kangle_GUI(object):
-    
     def __init__(self):
-        self.window = Tk(className="Kangle(%s)" % __version__)
+        self.window = Tk(className='Kangle %s' % __version__)
         self.window.resizable(False, False)
         self.window.ml = Menu(self.window)
         self.window.ml.add_command(label="Simple mode", command=self.menu)
