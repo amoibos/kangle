@@ -56,7 +56,7 @@ class Kangle(object):
             if not firstRun:
                 percent = 100 * self._counter / self._number
                 if percent not in self._progress:
-                    stdout.write("\r %s" % percent)
+                    stdout.write("\r%s\%" % percent)
                     stdout.flush()
                     self._progress[percent] = True
         
@@ -294,7 +294,7 @@ class Kangle(object):
                 mkdir(self._target_dir)
             elif dir != "pictures":
                 print >> stderr, "directory ", dir, " already exists"
-        self.numPattern = re.compile(r'\d+')
+        self.numPattern = compile(r'\d+')
 
 if __name__ == "__main__":
     options, remainder = getopt(argv[1:], 'dcrxsh:v', [
@@ -326,4 +326,4 @@ if __name__ == "__main__":
             print "%d" % kangle.doubleCounter
     else:
         print "nothing to do"
-    print "finished"
+    print "\nfinished"
