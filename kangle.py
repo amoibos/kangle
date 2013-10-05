@@ -16,6 +16,7 @@ from os import walk, mkdir, getcwd
 from os.path import join, isdir, getsize, splitext
 from glob import glob
 from zipfile import ZipFile
+from rarfile import RarFile
 from getopt import getopt
 from re import compile
 from threading import Timer
@@ -46,7 +47,8 @@ __version__ = "0.8.2"
 #Kangle, a symbiosis of manga and kindle
 class Kangle(object):
     """Kangle makes manga scans readable on a kindle device."""
-    supportedFormats = ('.jpg', '.png', '.gif', '.bmp')
+    supported_outputs = ('.jpg', '.png', '.gif', '.bmp')
+    compressed_inputs = ('.zip', '.cbz', '.rar', '.cbr')
     
     def progress(self, firstRun=False):
         """Call every 30s this function for printing the progress on screen"""
@@ -56,7 +58,7 @@ class Kangle(object):
             if not firstRun:
                 percent = 100 * self._counter / self._number
                 if percent not in self._progress:
-                    stdout.write("\r%s\%" % percent)
+                    stdout.write("\r%s%%" % percent)
                     stdout.flush()
                     self._progress[percent] = True
         
@@ -210,11 +212,11 @@ class Kangle(object):
                 self.file_name = file_name
                 full_name = join(curr_dir, file_name)
                 file_extension = splitext(file_name)[1].lower()
-                if file_extension in ('.zip', '.cbz'):
+                if file_extension in Kangle.compressed_inputs:
                     temp_dir = self._temp_dirs[file_name]
                     self.looking(temp_dir)
-                    shutil.rmtree(temp_dir)
-                elif file_extension in Kangle.supportedFormats:
+                    rmtree(temp_dir)
+                elif file_extension in Kangle.supported_outputs:
                     if not self.duplicating and self._double(full_name):
                         self.doubleCounter += 1
                         continue
@@ -225,17 +227,20 @@ class Kangle(object):
     
     def _number_files(self, dir, start=0):
         """Counts number of supported Files in dir and subdirectories."""
+        #FIXME: wrong computation of number
         number = start
         for _, _, files in walk(unicode(dir)):
             for file_name in files:
                 #filter for file extensions, 
                 #this must be supported by PIL
                 extension = splitext(file_name)[1]
-                if extension.lower() in Kangle.supportedFormats:
+                extension_lower = extension.lower()
+                if extension_lower in Kangle.supported_outputs:
                     number += 1
-                if extension.lower() in (".zip"):
-                    temp_dir = tempfile.mkdtemp()
-                    ZipFile(file_name).extractall(temp_dir)
+                if extension_lower in Kangle.compressed_inputs:
+                    temp_dir = mkdtemp()
+                    #TODO: split into threads
+                    ZipFile(file_name).extractall(temp_dir) if extension_lower == ".zip" else RarFile(file_name).extractall(temp_dir)
                     self._temp_dirs[file_name.lower()] = temp_dir
                     number += self._number_files(temp_dir, number)
             if not self.deepth:
@@ -285,7 +290,7 @@ class Kangle(object):
         self._temp_dirs = {}
         #count number of supported Files
         if self.footer:
-            self.signature = ("%s/%05d@%s", ("splitext(file_name)[1]", "self._number", "self.title"))
+            self.signature = ("%s/%05d@%s", ("splitext(file_name)[0]", "self._number", "self.title"))
             self._number = self._number_files(self._dir)
             self._x = None
         for dir in ["pictures", title]:
