@@ -227,7 +227,6 @@ class Kangle(object):
     
     def _number_files(self, dir, start=0):
         """Counts number of supported Files in dir and subdirectories."""
-        #FIXME: wrong computation of number
         number = start
         for _, _, files in walk(unicode(dir)):
             for file_name in files:
@@ -239,10 +238,10 @@ class Kangle(object):
                     number += 1
                 if extension_lower in Kangle.compressed_inputs:
                     temp_dir = mkdtemp()
-                    #TODO: split into threads
+                    #TODO: split into threads which are limited to number of cpu  cores
                     ZipFile(file_name).extractall(temp_dir) if extension_lower == ".zip" else RarFile(file_name).extractall(temp_dir)
                     self._temp_dirs[file_name.lower()] = temp_dir
-                    number += self._number_files(temp_dir, number)
+                    number = self._number_files(temp_dir, number)
             if not self.deepth:
                 break
         return number
