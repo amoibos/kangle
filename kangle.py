@@ -4,14 +4,16 @@
 #Copyright 2011, Daniel Oelschlegel <amoibos@gmail.com>
 #License: 2-clause BSD
 
-#this program requires a plugged kindle, at least python 2.5 and PIL
+#this program requires a plugged kindle, at least python 2.6 and Pillow(fork of PIL)
 #start this program in a subdirectory that contains picture files or
 #directories
 #press [ALT] + [z] for rereading the entries in pictures on a kindle
 #kindle tip: [ALT] + [f] = full screen,  [ALT] + [p] clear the boundary
 
+from __future__ import print_function
+from __future__ import division
 from PIL import Image, ImageDraw, ImageFilter
-from sys import exit, argv, stderr, stdout
+from sys import exit, argv, stderr, stdout, version_info
 from os import walk, mkdir, getcwd
 from os.path import join, isdir, getsize, splitext
 from glob import glob
@@ -44,6 +46,11 @@ __credits__ = [""]
 __license__ = "BSD"
 __version__ = "0.8.2"
 
+
+if version_info[0] >= 3:
+   def unicode(parameter):
+       return parameter
+
 #Kangle, a symbiosis of manga and kindle
 class Kangle(object):
     """Kangle makes manga scans readable on a kindle device."""
@@ -56,7 +63,7 @@ class Kangle(object):
             self._thread = Timer(30, self.progress)
             self._thread.start()
             if not firstRun:
-                percent = 100 * self._counter / self._number
+                percent = 100 * self._counter // self._number
                 if percent not in self._progress:
                     stdout.write("\r%s%%" % percent)
                     stdout.flush()
@@ -119,7 +126,7 @@ class Kangle(object):
         try:
             first = Image.open(file_name)
         except IOError:
-            print >> stderr, "damaged image file: %s" % self.file_name
+            print("damaged image file: %s" % self.file_name, file=stderr)
             if self.skipping:
                 return
             exit(-3)
@@ -131,8 +138,8 @@ class Kangle(object):
         #too wide, better splitting in middle
         if self.splitting and width > height:
             #take the second half and resize
-            second = first.crop((width / 2, 0, width, height))
-            first = first.crop((0, 0, width / 2, height))
+            second = first.crop((width // 2, 0, width, height))
+            first = first.crop((0, 0, width // 2, height))
             #reverse: manga reading style, right to left
             #save in correct order
             if not self.reverse:
@@ -297,7 +304,7 @@ class Kangle(object):
             if not isdir(self._target_dir):
                 mkdir(self._target_dir)
             elif dir != "pictures":
-                print >> stderr, "directory ", dir, " already exists"
+                print("directory", dir, "already exists", file=stderr)
         self.numPattern = compile(r'\d+')
 
 if __name__ == "__main__":
@@ -311,23 +318,23 @@ if __name__ == "__main__":
         title, target_dir = argv[1], argv[2]
     except IndexError:
         if len(argv) > 1 and argv[1] == "--version":
-            print "Kangle version ", __version__," by ", __author__
-            print "Thanks to", __credits__
+            print("Kangle version", __version__,"by ", __author__)
+            print("Thanks to", __credits__)
             exit(0)
         else:
-            print >> stderr, "arguments: TITLE KINDLE_ROOT_DIRECTORY <SOURCE>"
+            print("arguments: TITLE KINDLE_ROOT_DIRECTORY <SOURCE>", file=stderr)
             exit(-1)
     source =  argv[3] if len(argv) > 3 else getcwd()
     kangle = Kangle(title, target_dir, source)
-    print "found", kangle._number, "files"
+    print("found", kangle._number, "files")
     if kangle._number > 0:
-        print "converting & transferring ..."
+        print("converting & transferring ...")
         if not kangle.duplicating: 
-            print "\ndoubles found: ",
+            print("\ndoubles found: ", end="")
         #cProfile.run('kangle.start()')
         kangle.start()
         if not kangle.duplicating: 
-            print "%d" % kangle.doubleCounter
+            print("%d" % kangle.doubleCounter)
     else:
-        print "nothing to do"
-    print "\nfinished"
+        print("nothing to do")
+    print("\nfinished")

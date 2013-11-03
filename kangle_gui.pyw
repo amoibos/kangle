@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 
 # Copyright 2011, Daniel Oelschlegel <amoibos@gmail.com>
 # License: 2-clause BSD
