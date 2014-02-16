@@ -19,7 +19,7 @@ from os.path import join, isdir, getsize, splitext
 from glob import glob
 from zipfile import ZipFile
 from rarfile import RarFile
-from getopt import getopt
+from getopt import getopt, GetoptError
 from re import compile
 from threading import Timer
 from tempfile import mkdtemp
@@ -38,7 +38,7 @@ from zlib import crc32
 
 #getopt or config parser for standalone program behavior
 #TODO: BUG image file is truncated (0 bytes not processed)
-#       convert('L')
+#       convert("L")
 
 __author__ = "Daniel Oelschlegel"
 __copyright__ = "Copyright 2013, %s" % __author__
@@ -54,12 +54,12 @@ if version_info[0] >= 3:
 #Kangle, a symbiosis of manga and kindle
 class Kangle(object):
     """Kangle makes manga scans readable on a kindle device."""
-    supported_outputs = ('.jpg', '.png', '.gif', '.bmp')
-    compressed_inputs = ('.zip', '.cbz', '.rar', '.cbr')
+    supported_outputs = (".jpg", ".png", ".gif", ".bmp")
+    compressed_inputs = (".zip", ".cbz", ".rar", ".cbr")
     
     
     def output_progress(self, percent):
-        print("\r%s%%" % percent, end='')
+        print("\r%s%%" % percent, end="")
            
     def progress(self, firstRun=False):
         """Call every 30s this function for printing the progress on screen"""
@@ -82,7 +82,7 @@ class Kangle(object):
     def _cropping(self, image):
         """Crops one color border from scanned image"""
         #bad, needed better filter
-        img = image.convert('L').filter(ImageFilter.MaxFilter(size=5))
+        img = image.convert("L").filter(ImageFilter.MaxFilter(size=5))
         width, height = image.size
         #for loops, every side(w,e,n,s : (parameter index, direction))
         direction = (   (2, 1), (0, -1), 
@@ -138,7 +138,7 @@ class Kangle(object):
             first = self._cropping(first)
         #resolution of the image
         (width, height) = first.size
-        file_name = '%05da%s' % (counter, splitext(file_name)[1])
+        file_name = "%05da%s" % (counter, splitext(file_name)[1])
         #too wide, better splitting in middle
         if width > height and width > self.resolution[0] and self.splitting:
             #take the second half and resize
@@ -312,71 +312,57 @@ class Kangle(object):
                 mkdir(self._target_dir)
             elif dir != "pictures":
                 print("directory", dir, "already exists", file=stderr)
-        self.numPattern = compile(r'\d+')
+        self.numPattern = compile(r"\d+")
+
+def usage(options):
+    print("usage: <OPTIONS> TITLE KINDLE_ROOT_DIRECTORY", file=stderr)
+    print("options:")
+    for item in options:
+        output = options[item]
+        if isinstance(options[item], bool):
+            output = {True: "on", False: "off"}[options[item]]
+        print("\t", item, ": ", output, sep="")
+    exit(-1)
 
 if __name__ == "__main__":
-    options, remainder = getopt(argv[1:], 'aofsrcndtxip:v', [
-                                                         'source=',
-                                                         'splitting=',
-                                                         'cropping=',
-                                                         'duplicating=',
-                                                         'resolution=',
-                                                         'version',
-                                                         'footer=',
-                                                         'reverse=',
-                                                         'numsort=',
-                                                         'depth=',
-                                                         'stretching=',
-                                                         'skipping=',
-                                                         'start='
-                                                         ])
     additional_options = {"source":getcwd(), "numsort": False, "footer": True,
                             "skipping": True, "depth": True, 
                             "resolution": (600, 800), "start": 0, 
                             "splitting": True, "stretching": True, 
                             "reverse": True, "cropping": False, 
                             "skipping": True, "duplicating": True}
+    try:
+        options, remainder = getopt(argv[1:], "", ["source=", "splitting=",
+                                                    "cropping=", "duplicating=",
+                                                    "resolution=", "version",
+                                                    "footer=", "reverse=",
+                                                    "numsort=", "depth=",
+                                                    "stretching=", "skipping=",
+                                                    "start="])
+    except GetoptError:
+        usage(additional_options)
+        
     for opt, arg in options:
-        if opt in ('-a', '--start'):
+        if opt == "--start":
             additional_options["start"] = int(arg)
-        elif opt in ('-o', '--source'):
-            additional_options["source"] = arg
-        elif opt in ('-f', '--footer'):
-            additional_options["footer"] = arg.lower() == "on"
-        elif opt in ('-s', '--splitting'):
-            additional_options["splitting"] = arg.lower() == "on"
-        elif opt in ('-r', '--reverse'):
-            additional_options["reverse"] = arg.lower() == "on"
-        elif opt in ('-c', '--cropping'):
-            additional_options["cropping"] = arg.lower() == "on"
-        elif opt in ('-n', '--numsort'):
-            additional_options["num_sort"] = arg.lower() == "on" 
-        elif opt in ('-d', '--duplicating'):
-            additional_options["duplicating"] = arg.lower() == "on"     
-        elif opt in ('-t', '--depth'):
-            additional_options["depth"] = arg.lower() == "on"   
-        elif opt in ('-x', '--stretching'):
-            additional_options["stretching"] = arg.lower() == "on"  
-        elif opt in ('-i', '--resolution'):
+        elif opt == "--resolution":
             additional_options["resolution"] = map(int, arg.split(",")) 
-        elif opt in ('-p', '--skipping'):
-            additional_options["skipping"] = arg.lower() == "on"
-        elif opt in ('-v', '--version'):
-            print("Kangle version", __version__,"by ", __author__)
+        elif opt == "--source":
+            additional_options["source"] = arg
+        elif opt == "--version":
+            print("Kangle version", __version__, "by ", __author__)
             print("Thanks to", " ".join(__credits__))
             exit(0)
+        elif opt in ("--footer", "--splitting", "--reverse", "--cropping",
+                        "--numsort", "--duplicating", "--depth",
+                        "--stretching", "--skipping"):
+            additional_options[opt[2:]] = arg.lower() == "on"
         
     if len(remainder) == 2:                      
         #target_dir could look like "D:"(Windows) or "/media/kindle"(Unix-like)
         title, target_dir = remainder[0], remainder[1]
     else:
-        print("arguments: <OPTIONS> TITLE KINDLE_ROOT_DIRECTORY <SOURCE>", file=stderr)
-        for item in additional_options:
-            output = additional_options[item]
-            if isinstance(additional_options[item], bool):
-                output = {True: "on", False: "off"}[additional_options[item]]
-            print(item, ": ", output, sep="")
-        exit(-1)
+        usage(additional_options)
     
     kangle = Kangle(title, target_dir, additional_options)
     print("found", kangle._number, "files")
@@ -384,7 +370,7 @@ if __name__ == "__main__":
         print("converting & transferring ...")
         if not kangle.duplicating: 
             print("\ndoubles found: ", end="")
-        #cProfile.run('kangle.start()')
+        #cProfile.run("kangle.start()")
         kangle.start()
         if not kangle.duplicating: 
             print("%d" % kangle.doubleCounter)
