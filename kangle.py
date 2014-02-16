@@ -25,6 +25,7 @@ from threading import Timer
 from tempfile import mkdtemp
 from shutil import rmtree
 from zlib import crc32
+from collections import OrderedDict
 #from thread import start_new_thread
 
 ## PDF Extraktion
@@ -325,20 +326,14 @@ def usage(options):
     exit(-1)
 
 if __name__ == "__main__":
-    additional_options = {"source":getcwd(), "numsort": False, "footer": True,
+    additional_options = OrderedDict({"source":getcwd(), "resolution": (600, 800),"start": 0,"DUMMY":0,
+                            "numsort": False, "footer": True,
                             "skipping": True, "depth": True, 
-                            "resolution": (600, 800), "start": 0, 
                             "splitting": True, "stretching": True, 
                             "reverse": True, "cropping": False, 
-                            "skipping": True, "duplicating": True}
+                            "skipping": True, "duplicating": True})
     try:
-        options, remainder = getopt(argv[1:], "", ["source=", "splitting=",
-                                                    "cropping=", "duplicating=",
-                                                    "resolution=", "version",
-                                                    "footer=", "reverse=",
-                                                    "numsort=", "depth=",
-                                                    "stretching=", "skipping=",
-                                                    "start="])
+        options, remainder = getopt(argv[1:], "", map(lambda x: "%s=" % x, additional_options.keys()[4:]))
     except GetoptError:
         usage(additional_options)
         
@@ -353,9 +348,7 @@ if __name__ == "__main__":
             print("Kangle version", __version__, "by ", __author__)
             print("Thanks to", " ".join(__credits__))
             exit(0)
-        elif opt in ("--footer", "--splitting", "--reverse", "--cropping",
-                        "--numsort", "--duplicating", "--depth",
-                        "--stretching", "--skipping"):
+        elif opt in additional_options.keys()[4:]:
             additional_options[opt[2:]] = arg.lower() == "on"
         
     if len(remainder) == 2:                      
