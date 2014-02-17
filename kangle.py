@@ -26,18 +26,15 @@ from tempfile import mkdtemp
 from shutil import rmtree
 from zlib import crc32
 from collections import OrderedDict
-#from thread import start_new_thread
+
 
 ## PDF Extraktion
 ## GUI(TK) 
-## Kommandozeilenparameter(Standard abaendern+Parameter info)
 ## Buildskript und EXE beilegen
 ## Viewer Testmode
 
 #import cProfile
 
-
-#getopt or config parser for standalone program behavior
 #TODO: BUG image file is truncated (0 bytes not processed)
 #       convert("L")
 
@@ -49,8 +46,11 @@ __version__ = "0.9.0"
 
 
 if version_info[0] >= 3:
+   from _thread import start_new_thread
    def unicode(parameter):
        return parameter
+else:
+    from thread import start_new_thread
 
 #Kangle, a symbiosis of manga and kindle
 class Kangle(object):
@@ -169,8 +169,8 @@ class Kangle(object):
             self._make_footnote(image, text)
         full_name = join(self._target_dir, file_name)
         #saving in right order, synchronication?
-        #start_new_thread(image.save, (full_name, ))       
-        image.save(full_name)
+        start_new_thread(image.save, (full_name, ))       
+        #image.save(full_name)
         
     def _make_footnote(self, image, text):
         """Writes the text downright."""
@@ -305,8 +305,8 @@ class Kangle(object):
         if self.footer:
             self.signature = ("%s/%05d@%s", ("splitext(file_name)[0]", 
                 "self._number", "self.title"))
-            self._number = self._number_files(self._dir)
             self._x = None
+        self._number = self._number_files(self._dir)
         for dir in ["pictures", title]:
             self._target_dir = join(self._target_dir, dir)
             if not isdir(self._target_dir):
@@ -316,6 +316,8 @@ class Kangle(object):
         self.numPattern = compile(r"\d+")
 
 def usage(options):
+    print("Kangle version", __version__, "by", __author__)
+    print("Thanks to", " ".join(__credits__))
     print("usage: <OPTIONS> TITLE KINDLE_ROOT_DIRECTORY", file=stderr)
     print("options:")
     for item in options:
@@ -326,14 +328,16 @@ def usage(options):
     exit(-1)
 
 if __name__ == "__main__":
-    additional_options = OrderedDict({"source":getcwd(), "resolution": (600, 800),"start": 0,"DUMMY":0,
-                            "numsort": False, "footer": True,
-                            "skipping": True, "depth": True, 
-                            "splitting": True, "stretching": True, 
-                            "reverse": True, "cropping": False, 
-                            "skipping": True, "duplicating": True})
+    additional_options = OrderedDict([("source", getcwd()), ("resolution", (600, 800)), 
+                            ("start", 0), 
+                            ("numsort", False), ("footer", True),
+                            ("depth", True), ("duplicating", True),
+                            ("splitting", True), ("stretching", True), 
+                            ("reverse", True), ("cropping", False), 
+                            ("skipping", True)])
     try:
-        options, remainder = getopt(argv[1:], "", map(lambda x: "%s=" % x, additional_options.keys()[4:]))
+        options, remainder = getopt(argv[1:], "", map(lambda x: "%s=" % x, 
+                                            additional_options.keys()))
     except GetoptError:
         usage(additional_options)
         
@@ -344,12 +348,8 @@ if __name__ == "__main__":
             additional_options["resolution"] = map(int, arg.split(",")) 
         elif opt == "--source":
             additional_options["source"] = arg
-        elif opt == "--version":
-            print("Kangle version", __version__, "by ", __author__)
-            print("Thanks to", " ".join(__credits__))
-            exit(0)
-        elif opt in additional_options.keys()[4:]:
-            additional_options[opt[2:]] = arg.lower() == "on"
+        elif opt[2:] in list(additional_options.keys())[3:]:
+            additional_options[opt[2:]] = (arg.lower() == "on")
         
     if len(remainder) == 2:                      
         #target_dir could look like "D:"(Windows) or "/media/kindle"(Unix-like)
